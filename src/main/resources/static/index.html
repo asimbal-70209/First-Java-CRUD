@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Student Management - Java CRUD</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px #0001;
+        }
+        h1 { color: #26364a; }
+        input {
+            padding: 12px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            padding: 11px 16px;
+            margin: 4px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .delete { background: #dc2626; }
+        .edit { background: #d97706; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+        th { background: #f1f5f9; }
+        #message { color: #166534; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Student Management System</h1>
+    <p>First Java CRUD Application - Laboratory 1</p>
+
+    <h2>Add / Update Student</h2>
+    <form id="studentForm">
+        <input type="hidden" id="studentId">
+        <input id="name" placeholder="Student Name" required>
+        <input id="email" type="email" placeholder="Email" required>
+        <button type="submit" id="saveButton">Add Student</button>
+        <button type="button" onclick="resetForm()">Clear</button>
+    </form>
+
+    <p id="message"></p>
+
+    <h2>Student List</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentTable"></tbody>
+    </table>
+</div>
+
+<script>
+const api = '/api/students';
+let students = [];
+
+async function loadStudents() {
+    try {
+        const response = await fetch(api);
+        if (!response.ok) throw new Error('Cannot load students');
+        students = await response.json();
+
+        const table = document.getElementById('studentTable');
+        table.replaceChildren();
+
+        students.forEach(student => {
+            const row = document.createElement('tr');
+
+            [student.id, student.name, student.email].forEach(value => {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            const actions = document.createElement('td');
+
+            const edit = document.createElement('button');
+            edit.textContent = 'Edit';
+            edit.className = 'edit';
+            edit.onclick = () => editStudent(student.id);
+
+            const remove = document.createElement('button');
+            remove.textContent = 'Delete';
+            remove.className = 'delete';
+            remove.onclick = () => deleteStudent(student.id);
+
+            actions.append(edit, remove);
+            row.appendChild(actions);
+            table.appendChild(row);
+        });
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+document.getElementById('studentForm').onsubmit = async event => {
+    event.preventDefault();
+
+    const id = document.getElementById('studentId').value;
+    const student = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value
+    };
+
+    try {
+        const response = await fetch(id ? `${api}/${id}` : api, {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(student)
+        });
+
+        if (!response.ok) throw new Error('Save failed');
+
+        resetForm();
+        await loadStudents();
+        showMessage(id ? 'Student updated!' : 'Student added!');
+    } catch (error) {
+        showMessage(error.message);
+    }
+};
+
+function editStudent(id) {
+    const student = students.find(s => s.id === id);
+    if (!student) return;
+
+    document.getElementById('studentId').value = student.id;
+    document.getElementById('name').value = student.name;
+    document.getElementById('email').value = student.email;
+    document.getElementById('saveButton').textContent = 'Update Student';
+    window.scrollTo(0, 0);
+}
+
+async function deleteStudent(id) {
+    if (!confirm('Delete this student?')) return;
+
+    try {
+        const response = await fetch(`${api}/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('Delete failed');
+
+        await loadStudents();
+        showMessage('Student deleted!');
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+function resetForm() {
+    document.getElementById('studentForm').reset();
+    document.getElementById('studentId').value = '';
+    document.getElementById('saveButton').textContent = 'Add Student';
+}
+
+function showMessage(text) {
+    document.getElementById('message').textContent = text;
+}
+
+loadStudents();
+</script>
+</body>
+</html>
